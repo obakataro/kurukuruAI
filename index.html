@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI連想マップ プロトタイプ</title>
+    <style>
+        body { font-family: 'Arial', sans-serif; margin: 20px; background-color: #f4f7f9; }
+        #container { max-width: 800px; margin: 0 auto; padding: 20px; background-color: white; box-shadow: 0 4px 8px rgba(0,0,0,0.1); border-radius: 8px; }
+        h1 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        #input-area { display: flex; gap: 10px; margin-bottom: 20px; }
+        #keyword-input { flex-grow: 1; padding: 10px; border: 2px solid #ccc; border-radius: 4px; font-size: 16px; }
+        #generate-button { padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; transition: background-color 0.3s; }
+        #generate-button:hover { background-color: #0056b3; }
+        #mindmap-output { border: 1px solid #ddd; padding: 15px; min-height: 150px; background-color: #e9ecef; border-radius: 4px; }
+        .mindmap-node { display: inline-block; padding: 8px 15px; margin: 5px; background-color: #ffc107; border-radius: 20px; cursor: pointer; transition: transform 0.2s; font-weight: bold; }
+        .mindmap-node:hover { transform: scale(1.05); background-color: #e0a800; }
+        /* ここにマインドマップ表示のための視覚的なCSSを追加していきます（例：SVGやCanvasなど） */
+    </style>
+</head>
+<body>
+
+<div id="container">
+    <h1>AI連想マップ ジェネレーター</h1>
+    <p>💡 アイデアの基点となる単語を入力し、「生成」ボタンを押してください。</p>
+
+    <div id="input-area">
+        <input type="text" id="keyword-input" placeholder="例：古代遺跡、宇宙船、時間の概念" value="古代遺跡">
+        <button id="generate-button" onclick="generateMindMap()">生成</button>
+    </div>
+
+    <h2>連想結果</h2>
+    <div id="mindmap-output">
+        <div class="mindmap-node" id="central-node">中心キーワード: **古代遺跡**</div>
+        <div class="mindmap-node" onclick="selectNode('失われた技術')">失われた技術</div>
+        <div class="mindmap-node" onclick="selectNode('封印された神')">封印された神</div>
+        <div class="mindmap-node" onclick="selectNode('時空間の歪み')">時空間の歪み</div>
+    </div>
+</div>
+
+<script>
+    // ------------------------------------------
+    //  JavaScriptによる操作とAI API連携の枠組み
+    // ------------------------------------------
+    
+    // APIキーはセキュリティのため、通常はサーバーサイドで管理されます。
+    // クライアント側（ブラウザ）から直接APIを叩く場合は注意が必要です。
+    // const API_KEY = "YOUR_GEMINI_API_KEY"; 
+
+    /**
+     * 「生成」ボタンが押されたときに実行される関数
+     */
+    async function generateMindMap() {
+        const keyword = document.getElementById('keyword-input').value;
+        if (!keyword) {
+            alert("キーワードを入力してください。");
+            return;
+        }
+
+        const outputDiv = document.getElementById('mindmap-output');
+        outputDiv.innerHTML = `<div class="mindmap-node" id="central-node">中心キーワード: **${keyword}**</div><p>AIが連想を生成中...</p>`;
+        
+        // --- ★ ここにGemini APIの呼び出しコードが入ります ★ ---
+        
+        try {
+            // 実際のAPI呼び出しの例（擬似コード）
+            // const relatedWords = await callGeminiAPI(keyword); 
+            
+            // ダミーの連想結果
+            const relatedWords = ["異星人のメッセージ", "超古代文明", "地底世界への入口", "不可解な文字", "生命の源"];
+            
+            // 結果の描画
+            renderNodes(keyword, relatedWords);
+
+        } catch (error) {
+            outputDiv.innerHTML = `<p style="color: red;">エラーが発生しました: ${error.message}</p>`;
+        }
+    }
+
+    /**
+     * 生成された単語ノードを描画する関数
+     */
+    function renderNodes(centralWord, words) {
+        const outputDiv = document.getElementById('mindmap-output');
+        outputDiv.innerHTML = `<div class="mindmap-node" id="central-node">${centralWord}</div>`; // 中心ノードを再描画
+
+        words.forEach(word => {
+            const node = document.createElement('div');
+            node.className = 'mindmap-node';
+            node.textContent = word;
+            node.onclick = () => selectNode(word); // クリックで再生成
+            outputDiv.appendChild(node);
+        });
+    }
+
+
+    /**
+     * 生成されたノードがクリックされたときに実行される関数
+     * (この単語を新しいキーワードとして再生成をトリガーします)
+     */
+    function selectNode(newKeyword) {
+        console.log(`「${newKeyword}」を選択しました。この単語で再生成します。`);
+        document.getElementById('keyword-input').value = newKeyword;
+        generateMindMap(); // 新しいキーワードで再生成を開始
+    }
+
+
+    // ------------------------------------------
+    //  ★ 要実装：Gemini APIを呼び出す関数 ★
+    // ------------------------------------------
+    /* async function callGeminiAPI(keyword) {
+        // ここでプロンプトを作成し、APIを叩き、結果をパースして単語リストを返します。
+        // ...
+        // プロンプトの例: "「[keyword]」から連想される、創造的な単語を5つ、箇条書きのリスト形式でのみ出力してください。"
+    }
+    */
+</script>
+
+</body>
+</html>
