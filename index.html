@@ -1,203 +1,150 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💡 AI連想マップ </title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f0f4f8; color: #333; }
-        #container { max-width: 900px; margin: 0 auto; background-color: white; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); padding: 30px; }
-        h1 { color: #007bff; border-bottom: 3px solid #007bff; padding-bottom: 10px; margin-bottom: 30px; }
-        #input-area { display: flex; gap: 10px; margin-bottom: 25px; align-items: center; }
-        #keyword-input { flex-grow: 1; padding: 12px; border: 2px solid #ccc; border-radius: 8px; font-size: 16px; transition: border-color 0.3s; }
-        #keyword-input:focus { border-color: #007bff; outline: none; }
-        #add-button, #generate-button { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background-color 0.3s, transform 0.1s; }
-        #add-button { background-color: #28a745; color: white; }
-        #add-button:hover { background-color: #218838; transform: translateY(-1px); }
-        #generate-button { background-color: #ffc107; color: #333; }
-        #generate-button:hover { background-color: #e0a800; transform: translateY(-1px); }
-        
-        #current-keywords { display: flex; flex-wrap: wrap; gap: 10px; min-height: 40px; margin-bottom: 20px; padding: 10px; border: 1px dashed #ccc; border-radius: 8px; background-color: #fafafa; }
-        .keyword-tag { display: flex; align-items: center; padding: 8px 12px; background-color: #007bff; color: white; border-radius: 20px; font-size: 14px; font-weight: 500; }
-        .delete-btn { background: none; border: none; color: white; margin-left: 8px; font-weight: bold; cursor: pointer; opacity: 0.8; transition: opacity 0.3s; }
-        .delete-btn:hover { opacity: 1; }
-
-        #mindmap-output { padding: 15px 0; }
-        .mindmap-node { display: inline-block; padding: 10px 18px; margin: 8px; background-color: #6c757d; color: white; border-radius: 25px; cursor: pointer; font-weight: 600; transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s; user-select: none; }
-        .mindmap-node:hover { transform: translateY(-2px); box-shadow: 0 3px 5px rgba(0,0,0,0.2); }
-        .mindmap-node.selected { background-color: #dc3545; /* 選択時の色 */ }
-
-        .loading { text-align: center; color: #007bff; font-weight: bold; padding: 20px; }
-        .error { color: #dc3545; padding: 10px; background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AIマインドマップ</title>
+  <style>
+    body { margin: 0; font-family: sans-serif; overflow: hidden; }
+    #toolbar {
+      position: fixed; top: 0; left: 0; right: 0; height: 60px;
+      background: #f0f0f0; display: flex; align-items: center;
+      padding: 0 10px; gap: 10px; z-index: 10;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+    #board {
+      position: absolute; top: 60px; left: 0; right: 0; bottom: 0;
+      background: #fff; overflow: hidden;
+    }
+    .node {
+      position: absolute; padding: 8px 12px;
+      background: #ffe;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      cursor: grab; user-select: none;
+    }
+    .node.selected { border: 2px solid #66f; }
+    #trash {
+      position: fixed; right: 20px; bottom: 20px;
+      width: 60px; height: 60px;
+      font-size: 30px; text-align: center;
+      line-height: 60px; border-radius: 50%;
+      background: #fdd; border: 2px solid #f88;
+    }
+    #text-mode-btn { margin-left: auto; }
+  </style>
 </head>
 <body>
+  <div id="toolbar">
+    <input id="prompt" placeholder="単語や指示を入力" />
+    <input id="count" type="number" value="3" min="1" style="width:60px;" />
+    <button id="genBtn">生成</button>
+    <button id="text-mode-btn">テキスト追加</button>
+  </div>
 
-<div id="container">
-    <h1>✨ AI連想マップジェネレーター (プロトタイプ)</h1>
-    
-    <div id="input-area">
-        <input type="text" id="keyword-input" placeholder="アイデアの基点となる単語を入力...">
-        <button id="add-button" onclick="addKeyword()">➕ 追加</button>
-    </div>
+  <div id="board"></div>
+  <div id="trash">🗑️</div>
 
-    <h2>現在の連想の種</h2>
-    <div id="current-keywords">
-        <p id="no-keywords-message" style="color: #6c757d;">入力欄に単語を入れて「追加」を押してください。</p>
-    </div>
+  <script>
+    const board = document.getElementById('board');
+    const genBtn = document.getElementById('genBtn');
+    const promptInput = document.getElementById('prompt');
+    const countInput = document.getElementById('count');
+    let selectedNodes = new Set();
+    let dragTarget = null;
+    let offsetX = 0, offsetY = 0;
+    let textMode = false;
 
-    <button id="generate-button" onclick="generateMindMap()">✨ 連想アイデアを生成</button>
-    <p style="font-size: small; color: #6c757d; margin-top: 5px;">* 単語を複数選択して生成すると、アイデアがミックスされます。</p>
+    function createNode(text, x=200, y=200) {
+      const el = document.createElement('div');
+      el.className = 'node';
+      el.textContent = text;
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      board.appendChild(el);
 
-    <h2>連想結果</h2>
-    <div id="mindmap-output">
-        </div>
-</div>
+      el.addEventListener('mousedown', e => {
+        if (!e.shiftKey) {
+          selectedNodes.clear();
+          document.querySelectorAll('.node').forEach(n=>n.classList.remove('selected'));
+        }
+        selectedNodes.add(el);
+        el.classList.add('selected');
 
-<script>
-    const currentKeywordsDiv = document.getElementById('current-keywords');
-    const outputDiv = document.getElementById('mindmap-output');
-    const keywordInput = document.getElementById('keyword-input');
-    
-    // ------------------------------------------
-    // 1. キーワードの追加と削除
-    // ------------------------------------------
+        dragTarget = el;
+        offsetX = e.offsetX;
+        offsetY = e.offsetY;
+      });
 
-    function addKeyword() {
-        const keyword = keywordInput.value.trim();
-        if (!keyword) return;
-
-        // キーワードが入力されたらメッセージを非表示に
-        const message = document.getElementById('no-keywords-message');
-        if (message) message.style.display = 'none';
-
-        const tag = document.createElement('div');
-        tag.className = 'keyword-tag';
-        tag.textContent = keyword;
-        tag.onclick = toggleSelect; // クリックで選択・解除
-
-        // 削除ボタン
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'delete-btn';
-        deleteBtn.textContent = 'x';
-        deleteBtn.onclick = (e) => {
-            e.stopPropagation(); // 親要素（tag）のonclickイベントを防ぐ
-            tag.remove();
-            checkKeywordCount();
-        };
-
-        tag.appendChild(deleteBtn);
-        currentKeywordsDiv.appendChild(tag);
-        keywordInput.value = ''; // 入力欄をクリア
+      return el;
     }
 
-    // キーワードが0になったらメッセージを再表示
-    function checkKeywordCount() {
-        if (currentKeywordsDiv.children.length === 0) {
-            const message = document.createElement('p');
-            message.id = 'no-keywords-message';
-            message.style.color = '#6c757d';
-            message.textContent = '入力欄に単語を入れて「追加」を押してください。';
-            currentKeywordsDiv.appendChild(message);
-        }
+    document.addEventListener('mousemove', e => {
+      if (dragTarget) {
+        dragTarget.style.left = (e.pageX - offsetX) + 'px';
+        dragTarget.style.top = (e.pageY - offsetY) + 'px';
+      }
+    });
+
+    document.addEventListener('mouseup', e => {
+      if (!dragTarget) return;
+      const trash = document.getElementById('trash').getBoundingClientRect();
+      const rect = dragTarget.getBoundingClientRect();
+      if (
+        rect.right > trash.left &&
+        rect.left < trash.right &&
+        rect.bottom > trash.top &&
+        rect.top < trash.bottom
+      ) {
+        dragTarget.remove();
+      }
+      dragTarget = null;
+    });
+
+    // Gemini API call (GitHub Actions プロキシ版)
+    async function callGemini(prompt, baseWords) {
+      const res = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          base: baseWords,
+          prompt: prompt,
+          count: Number(countInput.value)
+        })
+      });
+      const data = await res.json();
+      return data.words;
     }
 
-    // ------------------------------------------
-    // 2. ノードの選択（クリック）
-    // ------------------------------------------
+    genBtn.addEventListener('click', async () => {
+      const prompt = promptInput.value;
+      const bases = [...selectedNodes].map(n => n.textContent);
+      if (bases.length === 0) {
+        alert('単語を選択してください');
+        return;
+      }
+      const results = await callGemini(prompt, bases);
+      if (!results) return;
 
-    function toggleSelect(event) {
-        event.currentTarget.classList.toggle('selected');
-    }
+      let base = [...selectedNodes][0];
+      let bx = parseInt(base.style.left); let by = parseInt(base.style.top);
 
-    // ------------------------------------------
-    // 3. AIによる連想生成（メインロジック）
-    // ------------------------------------------
+      results.forEach((t,i)=>{
+        createNode(t, bx + 120*(i+1), by + 60*(i%2));
+      });
+    });
 
-    async function generateMindMap() {
-        // 現在のキーワード（選択されているもの、または全て）を取得
-        const allNodes = Array.from(currentKeywordsDiv.querySelectorAll('.keyword-tag'));
-        let selectedNodes = allNodes.filter(node => node.classList.contains('selected'));
-        
-        // 選択がなければ、現在の「連想の種」に入っている全てを対象とする
-        if (selectedNodes.length === 0) {
-            selectedNodes = allNodes;
-        }
+    document.getElementById('text-mode-btn').addEventListener('click', () => {
+      textMode = !textMode;
+      if (textMode) alert('ホワイトボードをクリックしてテキスト追加');
+    });
 
-        if (selectedNodes.length === 0) {
-            alert("連想の種となる単語を最低一つ追加してください。");
-            return;
-        }
-
-        const keywords = selectedNodes.map(node => node.textContent.replace('x', '').trim());
-        
-        // UIの更新（ローディング表示）
-        outputDiv.innerHTML = `<div class="loading">✨ ${keywords.join(' と ')} から連想中...</div>`;
-
-        // ★★★ ここからGemini API呼び出し（サーバーレス関数を想定） ★★★
-        
-        // 🚨 注意: このfetchURLは、ご自身でデプロイする
-        // 🚨 APIキーを安全に扱うサーバーレス関数のエンドポイントに置き換えてください。
-        const fetchURL = '/api/generate-ideas'; 
-        
-        try {
-            const response = await fetch(fetchURL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ keywords: keywords, count: 8 }) // 例として8個生成
-            });
-
-            if (!response.ok) {
-                // サーバーレス関数側でエラー処理が行われた場合
-                throw new Error(`APIエラー: ${response.status} ${response.statusText}`);
-            }
-
-            const data = await response.json();
-            
-            if (data.error) {
-                // API側で具体的なエラーメッセージがある場合
-                 outputDiv.innerHTML = `<div class="error">連想失敗: ${data.error}</div>`;
-                 return;
-            }
-
-            // UIをクリアして結果を描画
-            outputDiv.innerHTML = '';
-            renderNodes(data.relatedWords); 
-
-        } catch (error) {
-            console.error('Fetch Error:', error);
-            outputDiv.innerHTML = `<div class="error">通信エラーが発生しました。バックエンド(サーバーレス関数)が正しくデプロイされているか確認してください。<br>詳細: ${error.message}</div>`;
-        }
-    }
-
-    // ------------------------------------------
-    // 4. 結果の描画
-    // ------------------------------------------
-
-    function renderNodes(words) {
-        if (!words || words.length === 0) {
-            outputDiv.innerHTML = '<p>AIは関連するアイデアを見つけられませんでした。キーワードを変えてみましょう。</p>';
-            return;
-        }
-
-        words.forEach(word => {
-            const node = document.createElement('div');
-            node.className = 'mindmap-node';
-            node.textContent = word;
-            
-            // ノードをクリックすると、現在の連想の種に追加される
-            node.onclick = () => {
-                keywordInput.value = word;
-                addKeyword();
-                // 追加後は選択状態をリセット
-                Array.from(outputDiv.querySelectorAll('.mindmap-node')).forEach(n => n.classList.remove('selected'));
-            };
-            
-            outputDiv.appendChild(node);
-        });
-    }
-
-</script>
-
+    board.addEventListener('click', e => {
+      if (!textMode) return;
+      const text = prompt('注釈内容:');
+      if (text) createNode(text, e.pageX, e.pageY);
+      textMode = false;
+    });
+  </script>
 </body>
 </html>
