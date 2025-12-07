@@ -118,18 +118,51 @@
       return data.words;
     }
 
-    document.getElementById('modeToggle').addEventListener('click',()=>{
-      mode = (mode === 'ai') ? 'word' : 'ai'; console.log('mode:', mode);
-      modeToggle.textContent = mode==='ai'? 'AIモード':'単語追加モード';
+    const modeToggle = document.getElementById('modeToggle');
+    // 初期表示
+    modeToggle.textContent = mode === 'ai' ? 'AIモード' : '単語追加モード';
+
+    modeToggle.addEventListener('click', ()=>{
+      mode = (mode === 'ai') ? 'word' : 'ai';
+      // ボタン表示を確実に更新
+      modeToggle.textContent = mode === 'ai' ? 'AIモード' : '単語追加モード';
+      // 入力欄のプレースホルダも切り替え
+      promptInput.placeholder = mode === 'ai' ? '単語や指示を入力' : '追加する単語を入力';
+      // 視覚的にわかるようにボタンにクラス
+      modeToggle.classList.toggle('mode-word', mode === 'word');
+      console.log('mode switched to', mode);
     });
 
     genBtn.addEventListener('click', async () => {
-      const prompt = promptInput.value;
-      const bases = [...selectedNodes].map(n => n.textContent);
-      if (bases.length === 0) {
-        alert('単語を選択してください');
+      const raw = promptInput.value.trim();
+      if (!raw) { alert('入力してね'); return; }
+
+      if (mode === 'word') {
+        // 単語追加モード: 入力文字列を新規ノードとして追加
+        const x = (window.innerWidth / 2) - 60;
+        const y = (window.innerHeight / 2) - 20;
+        createNode(raw, x, y);
+        promptInput.value = '';
         return;
       }
+
+      // AIモード
+      let prompt = raw;
+      let bases = [...selectedNodes].map(n => n.textContent);
+
+      if (bases.length === 0) {
+        // 選択がない場合は入力を基点ノードとして作成してから生成
+        const root = createNode(prompt, (window.innerWidth / 2) - 60, (window.innerHeight / 2) - 20);
+        // 選択状態にする
+        document.querySelectorAll('.node').forEach(n=>n.classList.remove('selected'));
+        selectedNodes.clear();
+        selectedNodes.add(root);
+        root.classList.add('selected');
+        bases = [prompt];
+        // 指示は空にして類語や関連語を生成する
+        prompt = '';
+      }
+
       const results = await callGemini(prompt, bases);
       if (!results) return;
 
@@ -139,9 +172,7 @@
       results.forEach((t,i)=>{
         createNode(t, bx + 120*(i+1), by + 60*(i%2));
       });
-    });
-
-    document.getElementById('text-mode-btn').addEventListener('click', () => {
+      promptInput.value = '';\n    });\n\n    document.getElementById('text-mode-btn'.addEventListener('click', () => {
       textMode = !textMode;
       if (textMode) alert('ホワイトボードをクリックしてテキスト追加');
     });
