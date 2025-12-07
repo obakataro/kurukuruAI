@@ -35,12 +35,7 @@
   </style>
 </head>
 <body>
-  <div id="toolbar">
-    <input id="prompt" placeholder="単語や指示を入力" />
-    <input id="count" type="number" value="3" min="1" style="width:60px;" />
-    <button id="genBtn">生成</button>
-    <button id="text-mode-btn">テキスト追加</button>
-  </div>
+  <div id=\"toolbar\">\n    <button id=\"modeToggle\">AIモード</button>\n    <input id=\"prompt\" placeholder=\"単語や指示を入力\" />\n    <input id=\"count\" type=\"number\" value=\"3\" min=\"1\" style=\"width:60px;\" />\n    <button id=\"genBtn\">生成</button>\n    <button id=\"text-mode-btn\">テキスト追加</button>\n  </div>
 
   <div id="board"></div>
   <div id="trash">🗑️</div>
@@ -48,8 +43,10 @@
   <script>
     const board = document.getElementById('board');
     const genBtn = document.getElementById('genBtn');
+    let mode = 'ai'; // ai | word
     const promptInput = document.getElementById('prompt');
     const countInput = document.getElementById('count');
+    let mode = 'ai'; // ai | word
     let selectedNodes = new Set();
     let dragTarget = null;
     let offsetX = 0, offsetY = 0;
@@ -116,7 +113,12 @@
       return data.words;
     }
 
-    genBtn.addEventListener('click', async () => {
+    document.getElementById('modeToggle').addEventListener('click',()=>{
+      mode = mode==='ai'?'word':'ai';
+      modeToggle.textContent = mode==='ai'? 'AIモード':'単語追加モード';
+    });
+
+    document.getElementById('modeToggle').addEventListener('click',()=>{\n      mode = mode==='ai'?'word':'ai';\n      modeToggle.textContent = mode==='ai'? 'AIモード':'単語追加モード';\n    });\n\n    genBtn.addEventListener('click', async () => {
       const prompt = promptInput.value;
       const bases = [...selectedNodes].map(n => n.textContent);
       if (bases.length === 0) {
